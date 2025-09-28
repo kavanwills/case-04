@@ -11,7 +11,7 @@
     <h1>Customer Survey</h1>
     <p class="lead">
       Fill out the form and submit. This page will POST your answers as JSON
-      to <code>https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/7492/proxy/5000/v1/survey</code>.
+      to <code>https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/7492/proxy/45405/v1/survey</code>.
     </p>
 
     <form id="survey-form" novalidate>
@@ -85,7 +85,7 @@
       };
 
       try {
-        const res = await fetch("https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/7492/proxy/5000/v1/survey", {
+        const res = await fetch("https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/7492/proxy/45405/v1/survey", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -104,7 +104,7 @@
         }
       } catch (err) {
         result.className = "result error";
-        result.textContent = "Network error. Is the API running at https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/7492/proxy/5000?";
+        result.textContent = "Network error. Is the API running at https://ood.hpc.virginia.edu/rnode/udc-aw32-10c1/7492/proxy/45405?";
       } finally {
         submitBtn.disabled = false;
       }

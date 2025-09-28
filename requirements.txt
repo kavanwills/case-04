@@ -1,5 +1,13 @@
-Flask==2.3.3
+Flask==2.0.3
+Werkzeug==2.0.3
+Jinja2==3.0.3
+itsdangerous==2.0.1
+MarkupSafe==2.0.1
+click==8.0.4
+
 pydantic==1.9.2
-Flask-Cors==4.0.1
-pytest==7.0.1
-pydantic[email]
+typing-extensions==4.0.1
+
+pytest==6.2.5
+flask-cors
+email-validator==1.1.3
