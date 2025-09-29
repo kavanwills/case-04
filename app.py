@@ -15,36 +15,21 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 # ---------- Pydantic model ----------
 class SurveyIn(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
+    name: str
     email: EmailStr
     age: int
     consent: bool
     rating: conint(ge=1, le=5)
     comments: str = ""
+    user_agent: str = None
+    submission_id: str = None
 
-    @validator("consent")
+    @validator("consent", allow_reuse=True)
     def must_be_true(cls, v):
         if v is not True:
             raise ValueError("consent must be true")
         return v
 
-
-# ---------- Helpers ----------
-def hash_value(s: str) -> str:
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
-
-
-def now_utc_iso() -> str:
-    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
-
-
-def store_submission(record: dict):
-    """Append the record to the NDJSON file."""
-    with open(DATA_FILE, "a") as f:
-        f.write(json.dumps(record) + "\n")
-
-
-# ---------- Routes ----------
 @app.route("/ping")
 def ping():
     return jsonify({"message": "API is alive", "status": "ok"}), 200
