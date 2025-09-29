@@ -50,7 +50,6 @@ def versioned():
 def submit_survey():
     if not request.is_json:
         return jsonify({"error": "bad_request", "detail": "JSON body required"}), 400
-
     try:
         payload = request.get_json(force=True) or {}
         if "name" not in payload and "full_name" in payload:
@@ -63,6 +62,7 @@ def submit_survey():
             data.submission_id = sha256_hex(f"{data.email}{hour_bucket}")
 
         stored = {
+            "name": data.name,
             "full_name": data.name,
             "hashed_email": sha256_hex(data.email),
             "hashed_age": sha256_hex(str(data.age)),
@@ -79,7 +79,6 @@ def submit_survey():
             f.write(json.dumps(stored) + "\n")
 
         return jsonify({"status": "ok", "submission_id": data.submission_id}), 201
-
     except ValidationError as e:
         return jsonify({"error": "validation_error", "detail": e.errors()}), 422
     except Exception as e:
