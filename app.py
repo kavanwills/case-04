@@ -1,65 +1,73 @@
 from flask import Flask, request, jsonify
-from pydantic import BaseModel, EmailStr, ValidationError, conint
+from pydantic import BaseModel, EmailStr, conint, ValidationError
 from datetime import datetime
-import hashlib, json, os, uuid
+import hashlib
+import json
+import os
+import uuid
 
 app = Flask(__name__)
 
-# Write where the grader expects it (relative to CWD)
-DATA_FILE = "data/survey.ndjson"
+DATA_FILE = os.path.join("data", "survey.ndjson")
 os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
 
+
+# --------- Pydantic model ---------
 class SurveySubmission(BaseModel):
     name: str
     email: EmailStr
-    age: conint(ge=0)
+    age: conint(ge=13, le=120)
     consent: bool
     rating: conint(ge=1, le=5)
     comments: str = ""
 
-def sha256(v: str) -> str:
-    return hashlib.sha256(v.encode("utf-8")).hexdigest()
 
+# --------- Helper functions ---------
+def hash_value(value: str) -> str:
+    """Hash sensitive values like email and age deterministically using SHA-256."""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def store_submission(record: dict) -> None:
+    """Append the record as JSON to the NDJSON file."""
+    with open(DATA_FILE, "a") as f:
+        f.write(json.dumps(record) + "\n")
+
+
+# --------- Routes ---------
 @app.route("/v1/survey", methods=["POST"])
 def submit_survey():
-    # Require JSON
+    # Enforce JSON only
     if not request.is_json:
-        return jsonify({"error": "Request must be JSON"}), 400
-
-    data = request.get_json(silent=True)
-    if data is None:
-        return jsonify({"error": "Malformed JSON"}), 400
+        return jsonify({"error": "invalid_content_type"}), 400
 
     try:
-        s = SurveySubmission(**data)
+        data = SurveySubmission(**request.get_json())
     except ValidationError as e:
-        # 🔧 Return the exact structure the tests expect
-        return jsonify({"error": "validation_error", "detail": e.errors()}), 422
+        return jsonify({"error": "validation_error", "details": e.errors()}), 422
 
-    # Build stored record (hash PII)
     submission_id = uuid.uuid4().hex
-    rec = {
-        "full_name": s.name,
-        "email": sha256(s.email),
-        "age": sha256(str(s.age)),
-        "rating": s.rating,
-        "comments": s.comments,
-        "consent": s.consent,
-        "user_agent": request.headers.get("User-Agent", ""),
+
+    # Hash sensitive fields before storing
+    stored_record = {
+        "full_name": data.name,
+        "email": hash_value(data.email),
+        "age": hash_value(str(data.age)),
+        "rating": data.rating,
+        "comments": data.comments,
+        "consent": data.consent,
+        "user_agent": request.headers.get("User-Agent"),
         "submission_id": submission_id,
         "received_at": datetime.utcnow().isoformat(),
         "ip": request.remote_addr,
     }
 
-    with open(DATA_FILE, "a") as f:
-        f.write(json.dumps(rec) + "\n")
+    store_submission(stored_record)
 
     return jsonify({"status": "ok", "submission_id": submission_id}), 201
 
-@app.route("/version")
-def version():
-    return jsonify({"version": "v1"})
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+@app.route("/v1/survey/version", methods=["GET"])
+def version():
+    return jsonify({"version": "1.0.0"})
 
