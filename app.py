@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from pydantic import BaseModel, EmailStr, ValidationError
 from datetime import datetime, timezone
+from typing import Optional
 import hashlib, json, os
 
 app = Flask(__name__)
@@ -13,6 +14,7 @@ def sha256_hex(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 def utc_hour_bucket() -> str:
+    # YYYYMMDDHH (UTC)
     return datetime.now(timezone.utc).strftime("%Y%m%d%H")
 
 class SurveyIn(BaseModel):
@@ -21,9 +23,9 @@ class SurveyIn(BaseModel):
     age: int
     consent: bool
     rating: int
-    comments: str | None = None
-    user_agent: str | None = None      # (1) optional
-    submission_id: str | None = None   # (3) optional
+    comments: Optional[str] = None
+    user_agent: Optional[str] = None       # (1) optional user_agent
+    submission_id: Optional[str] = None    # (3) optional submission_id
 
 @app.post("/v1/survey")
 def submit_survey():
@@ -37,10 +39,10 @@ def submit_survey():
     except ValidationError as e:
         return jsonify(error="validation_error", details=json.loads(e.json())), 422
 
-    # (3) use provided submission_id or compute from email + UTC hour
+    # (3) submission_id: use provided or compute sha256(email + UTC hour)
     submission_id = data.submission_id or sha256_hex(f"{data.email}{utc_hour_bucket()}")
 
-    # (2) write only hashed email/age; no raw PII
+    # (2) write only hashed email/age; no raw PII is persisted
     record = {
         "name": data.name,
         "consent": data.consent,
@@ -58,7 +60,6 @@ def submit_survey():
     return jsonify(status="created", submission_id=submission_id), 201
 
 if __name__ == "__main__":
-    import os
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
 
